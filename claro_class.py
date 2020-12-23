@@ -3,20 +3,20 @@ from matplotlib import pyplot as plt
 import numpy as np
 import numpy.ma as ma
 from scipy import special
+import math
 
 
 class claro_class:
 
     def __init__(self):
-        print("inizializzazione")
-
+        self.lista_diff_lineare = []
+        self.lista_diff_err = []
 
     def find_files(self):
         # TODO aggiungere gestione delle eccezioni in caso non si abbia i permessi di exec
         subprocess.call("./analisi_file.sh")
 
-
-    def linear_fit(self, how_many=20, how_many_chips = 0):
+    def linear_fit(self, how_many=20, how_many_chips=0):
         """
         Funzione per il fit lineare.
         Richiede un intero come parametro che indichi quanti file analizzare.
@@ -26,7 +26,8 @@ class claro_class:
         list_of_paths = self.read_pathfile(how_many, how_many_chips)
 
         for i in range(0, len(list_of_paths)):
-            x, y, soglia_vera = self.read_single_file(list_of_paths[i].strip())
+            x, y, soglia_vera, num_chip = self.read_single_file(
+                list_of_paths[i].strip())
 
             y_fit = np.array(y)
             y_fit = y_fit[y_fit > 1]
@@ -55,18 +56,18 @@ class claro_class:
             plt.text(x[0], y_plot[-2], "Soglia calcolata: x="+str(round(x_soglia, 2))+"V\nSoglia vera: x=" +
                      str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_soglia, 2))+"V", fontsize=8)
 
+            self.lista_diff_lineare.append((soglia_vera-x_soglia)**2)
             plt.plot(x_plot, y_plot)
-            plt.savefig("plot/fig"+str(i)+".png")
+            plt.savefig("plot/fig"+str(i)+"_chip_"+str(num_chip)+".png")
             plt.close()
-
 
     def better_fit(self, how_many=20, how_many_chips=0):
 
-        list_of_paths = self.read_pathfile(how_many,how_many_chips)
+        list_of_paths = self.read_pathfile(how_many, how_many_chips)
 
         for i in range(0, len(list_of_paths)):
 
-            x, y, soglia_vera = self.read_single_file(list_of_paths[i].strip())
+            x, y, soglia_vera, num_chip = self.read_single_file(list_of_paths[i].strip())
 
             plt.scatter(x, y, marker='o')
             plt.grid()
@@ -96,8 +97,7 @@ class claro_class:
                 extra2 = abs(x[index+1]-(x_plot[extra_funct_index2]))
                 x_plot += ((extra+extra2)/2)  # Secondo adattamento orizzontale
             else:
-                x_plot += extra #Secondo adattamento orizzontale
-            
+                x_plot += extra  # Secondo adattamento orizzontale
 
             index_soglia = np.argmin(abs(y_plot-500))
             x_soglia = x_plot[index_soglia]
@@ -110,9 +110,9 @@ class claro_class:
             plt.text(x[0], y_plot[index_soglia], "Soglia calcolata: x="+str(round(x_soglia, 2))+"V\nSoglia vera: x=" +
                      str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_soglia, 2))+"V", fontsize=8)
 
-            plt.savefig("plot/better_fig"+str(i)+".png")
+            self.lista_diff_err.append((soglia_vera-x_soglia)**2)
+            plt.savefig("plot/better_fig"+str(i)+"_chip_"+str(num_chip)+".png")
             plt.close()
-
 
     def read_pathfile(self, how_many, how_many_chips):
         """
@@ -126,26 +126,28 @@ class claro_class:
             print("Errore nella lettura del file")
 
         list_of_paths = []
-        
-        #In caso l'utente specifichi un numero X di chip
-        if how_many_chips is not 0:
+
+        # In caso l'utente specifichi un numero X di chip
+        if how_many_chips != 0:
             set_of_chips = set()
             while True:
                 pathfile = file_path.readline().strip()
                 chip_string = pathfile.split("/")
-                chip_string = chip_string[4].split("_") # "Chip_001"
+                chip_string = chip_string[4].split("_")  # "Chip_001"
                 chip_number = int(chip_string[1])
                 set_of_chips.add(chip_number)
 
                 if len(set_of_chips) == how_many_chips+1:
-                    set_of_chips.pop(chip_number) # Rimuove l'ultimo elemento (in più)
+                    # Rimuove l'ultimo elemento (in più)
+                    set_of_chips.remove(chip_number)
                     break
 
-                list_of_paths.append(pathfile) #Aggiunge il path alla lista di path
+                # Aggiunge il path alla lista di path
+                list_of_paths.append(pathfile)
 
-        #In caso l'utente specifichi un numero X di file
+        # In caso l'utente specifichi un numero X di file
         else:
-            for _ in range(0,how_many):
+            for _ in range(0, how_many):
                 pathfile = file_path.readline().strip()
                 list_of_paths.append(pathfile)
 
@@ -153,16 +155,19 @@ class claro_class:
 
         return list_of_paths
 
-
     def read_single_file(self, path):
         """
         Dato il path di un file, restituisce una lista di x, una lista di y e il valore di soglia.
         """
 
-        f = open(path,"r")
+        f = open(path, "r")
 
-        x=[]
-        y=[]
+        x = []
+        y = []
+
+        chip_string = path.split("/")
+        chip_string = chip_string[4].split("_")  # "Chip_001"
+        num_chip = int(chip_string[1])
 
         line = f.readline()
         line = line.split()
@@ -182,5 +187,16 @@ class claro_class:
             y.append(int(values[1]))
 
         f.close()
-        return x,y, soglia_vera
-        
+        return x, y, soglia_vera, num_chip
+
+    def sintesi_errori(self):
+
+        media_errori_lineare = np.mean(np.array(self.lista_diff_lineare))
+        media_errori_lineare = math.sqrt(media_errori_lineare)
+        media_errori_err_funct = np.mean(np.array(self.lista_diff_err))
+        media_errori_err_funct = math.sqrt(media_errori_err_funct)
+
+        print("\nIn media, la differenza tra le soglie 'vere' e quelle trovate con il fit lineare è: " +
+              str(round(media_errori_lineare, 4)))
+        print("In media, la differenza tra le soglie 'vere' e quelle trovate con il fit migliore è: " +
+              str(round(media_errori_err_funct, 4))+"\n")
