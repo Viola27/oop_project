@@ -1,14 +1,15 @@
-from claro_class import *
+from claro_class import claro_class
 import time
 
 elementi = 20
+chip = 0
 
 claro = claro_class()
 
 linear1 = time.time()
-claro.linear_fit(elementi)
+claro.linear_fit(elementi, chip)
 linear2 = time.time()
-claro.better_fit(elementi)
+claro.better_fit(elementi, chip)
 better2 = time.time()
 
 print("Tempo fit lineare per "+str(elementi) +

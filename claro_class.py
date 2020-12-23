@@ -10,48 +10,23 @@ class claro_class:
     def __init__(self):
         print("inizializzazione")
 
-    # ATTENZIONE! Accertarsi che "analisi_file.sh" abbia i permessi di exec
 
     def find_files(self):
-        # TODO aggiungere gestione delle eccezioni in caso non si abbia i permessi
+        # TODO aggiungere gestione delle eccezioni in caso non si abbia i permessi di exec
         subprocess.call("./analisi_file.sh")
 
-    def linear_fit(self, how_many=20):
+
+    def linear_fit(self, how_many=20, how_many_chips = 0):
         """
         Funzione per il fit lineare.
         Richiede un intero come parametro che indichi quanti file analizzare.
         Deafult: 20.
         """
-        try:
-            file_path = open('file_path.txt', 'r')
-        except:
-            print("Errore nella lettura del file")
 
-        for i in range(0, how_many):
-            f = open(file_path.readline().strip())
+        list_of_paths = self.read_pathfile(how_many, how_many_chips)
 
-            x = []
-            y = []
-
-            # Le prime 3 righe sono di header
-            line = f.readline()
-            line = line.split()
-            soglia_vera = float(line[1])
-            line = f.readline()
-            line = f.readline()
-
-            while True:
-                # Get next line from file
-                line = f.readline()
-
-                if not line:
-                    break
-
-                values = line.split()
-                x.append(int(values[0]))
-                y.append(int(values[1]))
-
-            f.close()
+        for i in range(0, len(list_of_paths)):
+            x, y, soglia_vera = self.read_single_file(list_of_paths[i].strip())
 
             y_fit = np.array(y)
             y_fit = y_fit[y_fit > 1]
@@ -84,40 +59,14 @@ class claro_class:
             plt.savefig("plot/fig"+str(i)+".png")
             plt.close()
 
-        file_path.close()
 
-    def better_fit(self, how_many=20):
+    def better_fit(self, how_many=20, how_many_chips=0):
 
-        try:
-            file_path = open('file_path.txt', 'r')
-        except:
-            print("Errore nella lettura del file")
+        list_of_paths = self.read_pathfile(how_many,how_many_chips)
 
-        for i in range(0, how_many):
-            f = open(file_path.readline().strip())
+        for i in range(0, len(list_of_paths)):
 
-            x = []
-            y = []
-
-            # Le prime 3 righe sono di header
-            line = f.readline()
-            line = line.split()
-            soglia_vera = float(line[1])
-            line = f.readline()
-            line = f.readline()
-
-            while True:
-                # Get next line from file
-                line = f.readline()
-
-                if not line:
-                    break
-
-                values = line.split()
-                x.append(int(values[0]))
-                y.append(int(values[1]))
-
-            f.close()
+            x, y, soglia_vera = self.read_single_file(list_of_paths[i].strip())
 
             plt.scatter(x, y, marker='o')
             plt.grid()
@@ -164,4 +113,74 @@ class claro_class:
             plt.savefig("plot/better_fig"+str(i)+".png")
             plt.close()
 
+
+    def read_pathfile(self, how_many, how_many_chips):
+        """
+        Dati il numero di file o il numero di chip (ignorato se 0),
+        restituisce una lista di stringhe corrispondenti ai path degli X file o X path chiesti.
+        """
+
+        try:
+            file_path = open('file_path.txt', 'r')
+        except:
+            print("Errore nella lettura del file")
+
+        list_of_paths = []
+        
+        #In caso l'utente specifichi un numero X di chip
+        if how_many_chips is not 0:
+            set_of_chips = set()
+            while True:
+                pathfile = file_path.readline().strip()
+                chip_string = pathfile.split("/")
+                chip_string = chip_string[4].split("_") # "Chip_001"
+                chip_number = int(chip_string[1])
+                set_of_chips.add(chip_number)
+
+                if len(set_of_chips) == how_many_chips+1:
+                    set_of_chips.pop(chip_number) # Rimuove l'ultimo elemento (in più)
+                    break
+
+                list_of_paths.append(pathfile) #Aggiunge il path alla lista di path
+
+        #In caso l'utente specifichi un numero X di file
+        else:
+            for _ in range(0,how_many):
+                pathfile = file_path.readline().strip()
+                list_of_paths.append(pathfile)
+
         file_path.close()
+
+        return list_of_paths
+
+
+    def read_single_file(self, path):
+        """
+        Dato il path di un file, restituisce una lista di x, una lista di y e il valore di soglia.
+        """
+
+        f = open(path,"r")
+
+        x=[]
+        y=[]
+
+        line = f.readline()
+        line = line.split()
+        soglia_vera = float(line[1])
+        line = f.readline()
+        line = f.readline()
+
+        while True:
+            # Get next line from file
+            line = f.readline()
+
+            if not line:
+                break
+
+            values = line.split()
+            x.append(int(values[0]))
+            y.append(int(values[1]))
+
+        f.close()
+        return x,y, soglia_vera
+        
