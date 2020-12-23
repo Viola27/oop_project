@@ -1,2 +1,4 @@
-./plot/*
-./secondolotto_1/*
+.plot/*
+.secondolotto_1/*
+.__pychache__/*
+..vscode/*
