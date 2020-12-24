@@ -11,7 +11,7 @@ linear1 = time.time()
 linear2 = time.time()
 #claro.better_fit(elementi, chip)
 #claro.better_fit_for_chips(chip)
-claro.find_chips_threshold(110)
+claro.find_chips_threshold(5000)
 better2 = time.time()
 #claro.sintesi_errori()
 

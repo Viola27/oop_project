@@ -196,7 +196,7 @@ class claro_class:
         NB: "how_many_chips" verrà convertito automaticamente al successivo multiplo di 9
         """
 
-        list_of_paths = self.read_pathfile(0, how_many_chips)
+        list_of_paths = self.read_pathfile(how_many_chips, 0)
         chips_values = {}
         how_many_chips += (9- how_many_chips % 9)
 
@@ -251,6 +251,8 @@ class claro_class:
 
         list_of_paths = []
 
+        how_many_chips = min(how_many_chips, 259)
+
         # In caso l'utente specifichi un numero X di chip
         if how_many_chips != 0:
             set_of_chips = set()
@@ -295,7 +297,7 @@ class claro_class:
         num_ch = int(chip_string[1])
 
         line = f.readline()
-        if line.startswith("error") or line.startswith("Non"):
+        if line.startswith("error") or line.startswith("Non") or line.startswith("Troppi"):
             return 0, 0, 0, 0, 0
 
         line = line.split()
@@ -318,10 +320,12 @@ class claro_class:
         return x, y, soglia_vera, num_chip, num_ch
 
     def draw_dict(self, d, how_many_to_draw):
+        how_many_to_draw = min(how_many_to_draw, 259)
         print("Processing "+str(how_many_to_draw)+" elements...")
         how_many_to_draw += 1
         how_many_graph = how_many_to_draw // 9
         resto = how_many_to_draw % 9
+        how_many_to_draw -= 1
 
         if resto != 0:
             how_many_graph += 1
@@ -337,6 +341,9 @@ class claro_class:
 
             # Itera 9 volte, una per ogni chip in fig
             for num_chip in range(i, 9+i):
+
+                if num_chip > how_many_to_draw:
+                    break
                 
                 g = ((num_chip-1) % 9)  # g è il numero del grafico che si sta disegnando
                 
