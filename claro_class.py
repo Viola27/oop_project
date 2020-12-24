@@ -26,8 +26,11 @@ class claro_class:
         list_of_paths = self.read_pathfile(how_many, how_many_chips)
 
         for i in range(0, len(list_of_paths)):
-            x, y, soglia_vera, num_chip = self.read_single_file(
+            x, y, soglia_vera, num_chip, _ = self.read_single_file(
                 list_of_paths[i].strip())
+
+            if x == 0 and y == 0 and num_chip == 0 and num_ch == 0:
+                continue
 
             y_fit = np.array(y)
             y_fit = y_fit[y_fit > 1]
@@ -67,7 +70,11 @@ class claro_class:
 
         for i in range(0, len(list_of_paths)):
 
-            x, y, soglia_vera, num_chip = self.read_single_file(list_of_paths[i].strip())
+            x, y, soglia_vera, num_chip, _ = self.read_single_file(
+                list_of_paths[i].strip())
+
+            if x == 0 and y == 0 and num_chip == 0 and num_ch == 0:
+                continue
 
             plt.scatter(x, y, marker='o')
             plt.grid()
@@ -111,8 +118,123 @@ class claro_class:
                      str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_soglia, 2))+"V", fontsize=8)
 
             self.lista_diff_err.append((soglia_vera-x_soglia)**2)
-            plt.savefig("plot/better_fig"+str(i)+"_chip_"+str(num_chip)+".png")
+            plt.savefig("plot/better_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
             plt.close()
+
+    def better_fit_for_chips(self, how_many_chips=5):
+        list_of_paths = self.read_pathfile(0, how_many_chips)
+        last_chip = 1
+        colors = ['blue', 'yellow', 'darkred', 'magenta',
+                  'orange', 'red', 'green', 'lightblue']
+
+        for i in range(0, len(list_of_paths)):
+            x, y, soglia_vera, num_chip, num_ch = self.read_single_file(
+                list_of_paths[i].strip())
+
+            # Se si inizia il plot di un nuovo chip, serve chiudere la figura vecchia
+            if num_chip != last_chip:
+                plt.yticks(np.arange(0, 1000, step=100))
+                plt.grid()
+                plt.legend()
+                plt.savefig("plot/better_chip_"+str(last_chip)+".png")
+                last_chip = num_chip
+                plt.close()
+
+            plt.scatter(x, y, marker='o', color=colors[num_ch])
+            plt.xscale('linear')
+            plt.yscale('linear')
+
+            x = np.array(x)
+            x_norm = [float(i) for i in x]  # Cast a float
+            x_norm -= np.mean(x_norm)
+
+            x_plot = np.linspace(x_norm[0], x_norm[-1], len(x_norm)*200)
+            y_plot = (special.erf(x_plot)+1)*500  # Adattamento verticale
+            x_plot += x[0]  # Adattamento orizzontale
+
+            y_inutili = np.array(y)
+            y_inutili = y_inutili[y_inutili < 50]
+            index = len(y_inutili)  # Indice del primo elemento utile
+
+            # Indice dell'elemento della funzione con stessa y
+            extra_funct_index = np.argmin(abs(y_plot - y[index]))
+            extra = abs(x[index]-(x_plot[extra_funct_index]))
+
+            # Se ci sono due punti centrali, la curva è traslata in modo da essere
+            # il più vicina possibile ad entrambi i punti
+            if y[index+1] < 950:
+                extra_funct_index2 = np.argmin(abs(y_plot - y[index+1]))
+                extra2 = abs(x[index+1]-(x_plot[extra_funct_index2]))
+                x_plot += ((extra+extra2)/2)  # Secondo adattamento orizzontale
+            else:
+                x_plot += extra  # Secondo adattamento orizzontale
+
+            index_soglia = np.argmin(abs(y_plot-500))
+            x_soglia = x_plot[index_soglia]
+
+            plt.scatter(x_plot[index_soglia],
+                        y_plot[index_soglia], marker='o', color="black")
+
+            plt.plot(x_plot, y_plot,
+                     color=colors[num_ch], label='Ch. '+str(num_ch))
+            self.lista_diff_err.append((soglia_vera-x_soglia)**2)
+
+        plt.yticks(np.arange(0, 1000, step=100))
+        plt.grid()
+        plt.legend()
+        plt.savefig("plot/better_chip_"+str(last_chip)+".png")
+        plt.close()
+
+    def find_chips_threshold(self, how_many_chips=-1, how_many_to_draw=10):
+        """
+        Questa funzione trova il valore di soglia per ciascun canale di ciascun chip,
+        li salva su file e li disegna in uno scatter plot.
+        Non salva i grafici dei fit.
+        Il parametro "how_many_chips" conta i chip da analizzare senza considerare le ripetizioni
+        (se impostato a 259 non leggerà tutti i chip, ma solo i primi 259, anche se il successivo è il chip 1).
+        Se lasciato a -1, come da default, legge tutti i (41460) chip esistenti nel file_path.
+        """
+
+        list_of_paths = self.read_pathfile(0, how_many_chips)
+        chips_values = {}
+
+        for i in range(0, len(list_of_paths)):
+            x, y, _, num_chip, num_ch = self.read_single_file(
+                list_of_paths[i].strip())
+
+            if x == 0 and y == 0 and num_chip == 0 and num_ch == 0:
+                continue
+
+            x = np.array(x)
+            x_norm = [float(i) for i in x]  # Cast a float
+            x_norm -= np.mean(x_norm)
+            x_plot = np.linspace(x_norm[0], x_norm[-1], len(x_norm)*200)
+            y_plot = (special.erf(x_plot)+1)*500  # Adattamento verticale
+            x_plot += x[0]  # Adattamento orizzontale
+
+            # Ricerca valore di soglia (per commenti più dettagliati
+            # si rimanda alla funzione "better_fit()")
+            y_inutili = np.array(y)
+            y_inutili = y_inutili[y_inutili < 50]
+            index = len(y_inutili)  # Indice del primo elemento utile
+            extra_funct_index = np.argmin(abs(y_plot - y[index]))
+            extra = abs(x[index]-(x_plot[extra_funct_index]))
+            if y[index+1] < 950:
+                extra_funct_index2 = np.argmin(abs(y_plot - y[index+1]))
+                extra2 = abs(x[index+1]-(x_plot[extra_funct_index2]))
+                x_plot += ((extra+extra2)/2)  # Secondo adattamento orizzontale
+            else:
+                x_plot += extra  # Secondo adattamento orizzontale
+            index_soglia = np.argmin(abs(y_plot-500))
+            x_soglia = x_plot[index_soglia]
+
+            # Aggiunta del valore soglia al dizionario
+            if num_chip*10+num_ch not in chips_values:
+                chips_values[num_chip*10+num_ch] = [x_soglia]
+            else:
+                chips_values[num_chip*10+num_ch].append(x_soglia)
+
+        self.draw_dict(chips_values, how_many_to_draw)
 
     def read_pathfile(self, how_many, how_many_chips):
         """
@@ -166,10 +288,14 @@ class claro_class:
         y = []
 
         chip_string = path.split("/")
-        chip_string = chip_string[4].split("_")  # "Chip_001"
-        num_chip = int(chip_string[1])
+        chip_string = chip_string[6].split("_")  # "Chip_001"
+        num_chip = int(chip_string[5].split(".")[0])
+        num_ch = int(chip_string[1])
 
         line = f.readline()
+        if line.startswith("error"):
+            return 0, 0, 0, 0, 0
+
         line = line.split()
         soglia_vera = float(line[1])
         line = f.readline()
@@ -187,7 +313,37 @@ class claro_class:
             y.append(int(values[1]))
 
         f.close()
-        return x, y, soglia_vera, num_chip
+        return x, y, soglia_vera, num_chip, num_ch
+
+    def draw_dict(self, d, how_many_to_draw):
+        how_many_graph = how_many_to_draw // 9
+        resto = how_many_to_draw % 9
+
+        if resto != 0:
+            how_many_graph += 1
+
+        for i in range(0, how_many_graph):
+            fig, ax = plt.subplots(nrows=3, ncols=3)
+            colors = ['blue', 'yellow', 'darkred', 'magenta',
+                      'orange', 'red', 'green', 'lightblue']
+
+            # Itera 9 volte, una per ogni chip in fig
+            for num_chip in range(1*i, 10*i):
+                g = num_chip // 10  # g è il numero del grafico che si sta disegnando
+                for ch in range(0, 8):  # Itera 8 volte, una per ogni canale del chip
+                    try:
+                        x_plot = d[num_chip * 10 + ch]
+                    except:
+                        continue
+                    y_plot = np.ones(len(x_plot))*500
+                    ax[g // 3][g % 3].scatter(x_plot, y_plot,
+                                             label="Ch. "+str(ch), color=colors[ch])
+                    ax[g // 3][g % 3].legend()
+                    ax[g // 3][g % 3].grid()
+                    ax[g // 3][g % 3].title.set_text("Chip "+str(num_chip))
+
+            fig.savefig("plot/soglie"+str(i)+".png")
+            plt.close(fig)
 
     def sintesi_errori(self):
 
