@@ -4,6 +4,7 @@ import numpy as np
 import numpy.ma as ma
 from scipy import special
 import math
+import progressbar
 
 
 class claro_class:
@@ -317,12 +318,17 @@ class claro_class:
         return x, y, soglia_vera, num_chip, num_ch
 
     def draw_dict(self, d, how_many_to_draw):
+        print("Processing "+str(how_many_to_draw)+" elements...")
         how_many_to_draw += 1
         how_many_graph = how_many_to_draw // 9
         resto = how_many_to_draw % 9
 
         if resto != 0:
             how_many_graph += 1
+
+        bar = progressbar.ProgressBar(maxval=how_many_to_draw,
+                                      widgets=[progressbar.Bar("=", "[", "]"), " ", progressbar.Percentage()])
+        bar.start()
 
         for i in range(1, how_many_to_draw,9):
             fig, ax = plt.subplots(nrows=3, ncols=3, figsize=(15,10))
@@ -338,7 +344,7 @@ class claro_class:
                     try:
                         x_plot = d[num_chip * 10 + ch]
                     except:
-                        print("chip "+str(num_chip)+" vuoto")
+                        #print("chip "+str(num_chip)+" vuoto")
                         ax[g // 3][g % 3].title.set_text("Chip "+str(num_chip)+" (missing data on some ch)")
                         break
                     y_plot = np.ones(len(x_plot))*500
@@ -349,6 +355,9 @@ class claro_class:
 
             fig.savefig("plot/soglie"+str(i)+".png")
             plt.close(fig)
+            bar.update(i)
+        
+        bar.finish()
 
     def sintesi_errori(self):
 

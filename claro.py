@@ -15,7 +15,7 @@ claro.find_chips_threshold(110)
 better2 = time.time()
 #claro.sintesi_errori()
 
-print("Tempo fit lineare per "+str(elementi) +
-      " elementi: "+str(round(linear2-linear1,2)))
+#print("Tempo fit lineare per "+str(elementi) +
+#      " elementi: "+str(round(linear2-linear1,2)))
 print("Tempo fit con funzione di errore per "+str(elementi) +
       " elementi: "+str(round(better2-linear2,2)))
