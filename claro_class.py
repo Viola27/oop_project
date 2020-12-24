@@ -185,18 +185,19 @@ class claro_class:
         plt.savefig("plot/better_chip_"+str(last_chip)+".png")
         plt.close()
 
-    def find_chips_threshold(self, how_many_chips=-1, how_many_to_draw=10):
+    def find_chips_threshold(self, how_many_chips=100):
         """
         Questa funzione trova il valore di soglia per ciascun canale di ciascun chip,
         li salva su file e li disegna in uno scatter plot.
         Non salva i grafici dei fit.
         Il parametro "how_many_chips" conta i chip da analizzare senza considerare le ripetizioni
         (se impostato a 259 non leggerà tutti i chip, ma solo i primi 259, anche se il successivo è il chip 1).
-        Se lasciato a -1, come da default, legge tutti i (41460) chip esistenti nel file_path.
+        NB: "how_many_chips" verrà convertito automaticamente al successivo multiplo di 9
         """
 
         list_of_paths = self.read_pathfile(0, how_many_chips)
         chips_values = {}
+        how_many_chips += (9- how_many_chips % 9)
 
         for i in range(0, len(list_of_paths)):
             x, y, _, num_chip, num_ch = self.read_single_file(
@@ -234,7 +235,7 @@ class claro_class:
             else:
                 chips_values[num_chip*10+num_ch].append(x_soglia)
 
-        self.draw_dict(chips_values, how_many_to_draw)
+        self.draw_dict(chips_values, how_many_chips)
 
     def read_pathfile(self, how_many, how_many_chips):
         """
@@ -293,7 +294,7 @@ class claro_class:
         num_ch = int(chip_string[1])
 
         line = f.readline()
-        if line.startswith("error"):
+        if line.startswith("error") or line.startswith("Non"):
             return 0, 0, 0, 0, 0
 
         line = line.split()
@@ -316,30 +317,34 @@ class claro_class:
         return x, y, soglia_vera, num_chip, num_ch
 
     def draw_dict(self, d, how_many_to_draw):
+        how_many_to_draw += 1
         how_many_graph = how_many_to_draw // 9
         resto = how_many_to_draw % 9
 
         if resto != 0:
             how_many_graph += 1
 
-        for i in range(0, how_many_graph):
-            fig, ax = plt.subplots(nrows=3, ncols=3)
+        for i in range(1, how_many_to_draw,9):
+            fig, ax = plt.subplots(nrows=3, ncols=3, figsize=(15,10))
             colors = ['blue', 'yellow', 'darkred', 'magenta',
                       'orange', 'red', 'green', 'lightblue']
 
             # Itera 9 volte, una per ogni chip in fig
-            for num_chip in range(1*i, 10*i):
-                g = num_chip // 10  # g è il numero del grafico che si sta disegnando
+            for num_chip in range(i, 9+i):
+                
+                g = ((num_chip-1) % 9)  # g è il numero del grafico che si sta disegnando
+                
                 for ch in range(0, 8):  # Itera 8 volte, una per ogni canale del chip
                     try:
                         x_plot = d[num_chip * 10 + ch]
                     except:
-                        continue
+                        print("chip "+str(num_chip)+" vuoto")
+                        ax[g // 3][g % 3].title.set_text("Chip "+str(num_chip)+" (missing data on some ch)")
+                        break
                     y_plot = np.ones(len(x_plot))*500
+                    
                     ax[g // 3][g % 3].scatter(x_plot, y_plot,
-                                             label="Ch. "+str(ch), color=colors[ch])
-                    ax[g // 3][g % 3].legend()
-                    ax[g // 3][g % 3].grid()
+                                            label="Ch. "+str(ch), marker='o', color=colors[ch])
                     ax[g // 3][g % 3].title.set_text("Chip "+str(num_chip))
 
             fig.savefig("plot/soglie"+str(i)+".png")
