@@ -14,14 +14,26 @@ class claro_class:
         self.lista_diff_err = []
 
     def find_files(self):
-        # TODO aggiungere gestione delle eccezioni in caso non si abbia i permessi di exec
-        subprocess.call("./analisi_file.sh")
+        """
+        Questa funzione esegue lo script 'analisi_file.sh', 
+        generando il file path_file con i path di tutti i file .txt 
+        che contengono i valori da analizzare.
+        """
+        try:
+            subprocess.call("./analisi_file.sh")
+        except:
+            print("An error occurred trying to generate path_file.\n" +
+                  "Please check if you have permission to execute 'analisi_file.sh'.")
 
     def linear_fit(self, how_many=20, how_many_chips=0):
         """
         Funzione per il fit lineare.
-        Richiede un intero come parametro che indichi quanti file analizzare.
-        Deafult: 20.
+        Parametri:
+        - how_many: default 20, indica quanti file analizzare.
+        - how_many_chips: default 0, indica quanti chip analizzare.
+        Se 'how_many_chips' è 0, viene ignorato.
+        Se 'how_many_chips' è diverso da 0, vengono analizzati 'how_many' file e 
+        vengono considerati solo quelli con un numero di chip minore o uguale a 'how_many_chips'.
         """
 
         list_of_paths = self.read_pathfile(how_many, how_many_chips)
@@ -30,7 +42,8 @@ class claro_class:
             x, y, soglia_vera, num_chip, _ = self.read_single_file(
                 list_of_paths[i].strip())
 
-            if x == 0 and y == 0 and num_chip == 0 and num_ch == 0:
+            # In caso nel file ci siano valori non corretti, salta il ciclo
+            if x == 0 and y == 0 and soglia_vera == 0 and num_chip == 0:
                 continue
 
             y_fit = np.array(y)
@@ -66,6 +79,15 @@ class claro_class:
             plt.close()
 
     def better_fit(self, how_many=20, how_many_chips=0):
+        """
+        Funzione per il fit tramite la 'err_function()'.
+        Parametri:
+        - how_many: default 20, indica quanti file analizzare.
+        - how_many_chips: default 0, indica quanti chip analizzare.
+        Se 'how_many_chips' è 0, viene ignorato.
+        Se 'how_many_chips' è diverso da 0, vengono analizzati 'how_many' file e 
+        vengono considerati solo quelli con un numero di chip minore o uguale a 'how_many_chips'.
+        """
 
         list_of_paths = self.read_pathfile(how_many, how_many_chips)
 
@@ -74,7 +96,7 @@ class claro_class:
             x, y, soglia_vera, num_chip, _ = self.read_single_file(
                 list_of_paths[i].strip())
 
-            if x == 0 and y == 0 and num_chip == 0 and num_ch == 0:
+            if x == 0 and y == 0 and soglia_vera == 0 and num_chip == 0:
                 continue
 
             plt.scatter(x, y, marker='o')
@@ -122,8 +144,22 @@ class claro_class:
             plt.savefig("plot/better_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
             plt.close()
 
-    def better_fit_for_chips(self, how_many_chips=5):
-        list_of_paths = self.read_pathfile(0, how_many_chips)
+    def better_fit_for_chips(self, how_many=200, how_many_chips=27):
+        """
+        Funzione per il fit tramite la 'err_function()'.
+        La funzione crea un unico plot per ciascun chip, contenente tutte le curve dei diversi canali.
+        E' consigliabile impostare un valore di 'how_many' minore di 4000, 
+        in modo da avere al più 8 canali per plot.
+
+        Parametri:
+        - how_many: default 200, indica quanti file analizzare.
+        - how_many_chips: default 27, indica quanti chip analizzare.
+        Se 'how_many_chips' è 0, viene ignorato.
+        Se 'how_many_chips' è diverso da 0, vengono analizzati 'how_many' file e 
+        vengono considerati solo quelli con un numero di chip minore o uguale a 'how_many_chips'.
+        """
+
+        list_of_paths = self.read_pathfile(how_many, how_many_chips)
         last_chip = 1
         colors = ['blue', 'yellow', 'darkred', 'magenta',
                   'orange', 'red', 'green', 'lightblue']
@@ -186,19 +222,22 @@ class claro_class:
         plt.savefig("plot/better_chip_"+str(last_chip)+".png")
         plt.close()
 
-    def find_chips_threshold(self, how_many_chips=100):
+    def find_chips_threshold(self, how_many=400, how_many_chips=259):
         """
         Questa funzione trova il valore di soglia per ciascun canale di ciascun chip,
-        li salva su file e li disegna in uno scatter plot.
+        li salva su file e li disegna in uno scatter plot (uno per ciascun chip).
         Non salva i grafici dei fit.
-        Il parametro "how_many_chips" conta i chip da analizzare senza considerare le ripetizioni
-        (se impostato a 259 non leggerà tutti i chip, ma solo i primi 259, anche se il successivo è il chip 1).
-        NB: "how_many_chips" verrà convertito automaticamente al successivo multiplo di 9
+
+        Parametri:
+        - how_many: default 400, indica quanti file analizzare.
+        - how_many_chips: default 259, indica quanti chip analizzare.
+
+        NB: "how_many" verrà convertito automaticamente al successivo multiplo di 9
         """
 
-        list_of_paths = self.read_pathfile(how_many_chips, 0)
+        list_of_paths = self.read_pathfile(how_many, how_many_chips)
         chips_values = {}
-        how_many_chips += (9- how_many_chips % 9)
+        how_many += (9 - how_many % 9)
 
         for i in range(0, len(list_of_paths)):
             x, y, _, num_chip, num_ch = self.read_single_file(
@@ -240,8 +279,10 @@ class claro_class:
 
     def read_pathfile(self, how_many, how_many_chips):
         """
-        Dati il numero di file o il numero di chip (ignorato se 0),
-        restituisce una lista di stringhe corrispondenti ai path degli X file o X path chiesti.
+        Dato il numero di file da analizzare, restituisce i rispettivi X path.
+        Questi vengono filtrati se il valore 'how_many_chips' è diverso da 0,
+        in modo da contenere i path relativi ai file con numero di chip
+        minore o uguale a 'how_many_chips'.
         """
 
         try:
@@ -250,26 +291,19 @@ class claro_class:
             print("Errore nella lettura del file")
 
         list_of_paths = []
-
         how_many_chips = min(how_many_chips, 259)
 
         # In caso l'utente specifichi un numero X di chip
         if how_many_chips != 0:
-            set_of_chips = set()
-            while True:
+            for _ in range(0, how_many):
                 pathfile = file_path.readline().strip()
                 chip_string = pathfile.split("/")
                 chip_string = chip_string[4].split("_")  # "Chip_001"
-                chip_number = int(chip_string[1])
-                set_of_chips.add(chip_number)
+                chip_number = int(chip_string[1])  # Trovato il numero del chip
 
-                if len(set_of_chips) == how_many_chips+1:
-                    # Rimuove l'ultimo elemento (in più)
-                    set_of_chips.remove(chip_number)
-                    break
-
-                # Aggiunge il path alla lista di path
-                list_of_paths.append(pathfile)
+                # Si aggiunge il path solo se il chip è tra i primi X
+                if chip_number <= how_many_chips:
+                    list_of_paths.append(pathfile)
 
         # In caso l'utente specifichi un numero X di file
         else:
@@ -278,12 +312,12 @@ class claro_class:
                 list_of_paths.append(pathfile)
 
         file_path.close()
-
         return list_of_paths
 
     def read_single_file(self, path):
         """
-        Dato il path di un file, restituisce una lista di x, una lista di y e il valore di soglia.
+        Dato il path di un file, restituisce una lista di x, una lista di y,
+        il valore di soglia, il numero del chip e il numero del canale.
         """
 
         f = open(path, "r")
@@ -320,6 +354,21 @@ class claro_class:
         return x, y, soglia_vera, num_chip, num_ch
 
     def draw_dict(self, d, how_many_to_draw):
+        """
+        Funzione per creare un grafico a partire da un dictionary.
+        Crea immagini con 9 subplot in modo da ottimizzare i tempi.
+
+        Parametri:
+        - d: dictionary da disegnare.
+        - how_many_to_draw: numero di chip di cui fare il grafico.
+
+        """
+
+        if (len(d) / 8) < (how_many_to_draw * 8 + 1.4 * len(d)):
+            print("d: "+str(len(d))+" how_many_to_draw: "+str(how_many_to_draw))
+            print("WARNING: you may required too many chips or too few file to read." +
+                  " You may find blank graphs.")
+
         how_many_to_draw = min(how_many_to_draw, 259)
         print("Processing "+str(how_many_to_draw)+" elements...")
         how_many_to_draw += 1
@@ -334,8 +383,9 @@ class claro_class:
                                       widgets=[progressbar.Bar("=", "[", "]"), " ", progressbar.Percentage()])
         bar.start()
 
-        for i in range(1, how_many_to_draw,9):
-            fig, ax = plt.subplots(nrows=3, ncols=3, figsize=(15,10))
+        for i in range(1, how_many_to_draw, 9):
+
+            fig, ax = plt.subplots(nrows=3, ncols=3, figsize=(15, 10))
             colors = ['blue', 'yellow', 'darkred', 'magenta',
                       'orange', 'red', 'green', 'lightblue']
 
@@ -344,29 +394,37 @@ class claro_class:
 
                 if num_chip > how_many_to_draw:
                     break
-                
-                g = ((num_chip-1) % 9)  # g è il numero del grafico che si sta disegnando
-                
+
+                # g è il numero del grafico che si sta disegnando
+                g = ((num_chip-1) % 9)
+
                 for ch in range(0, 8):  # Itera 8 volte, una per ogni canale del chip
                     try:
                         x_plot = d[num_chip * 10 + ch]
                     except:
                         #print("chip "+str(num_chip)+" vuoto")
-                        ax[g // 3][g % 3].title.set_text("Chip "+str(num_chip)+" (missing data on some ch)")
+                        ax[g // 3][g % 3].title.set_text(
+                            "Chip "+str(num_chip)+" (missing data on some ch)")
                         break
                     y_plot = np.ones(len(x_plot))*500
-                    
+
                     ax[g // 3][g % 3].scatter(x_plot, y_plot,
-                                            label="Ch. "+str(ch), marker='o', color=colors[ch])
+                                              label="Ch. "+str(ch), marker='o', color=colors[ch])
                     ax[g // 3][g % 3].title.set_text("Chip "+str(num_chip))
 
             fig.savefig("plot/soglie"+str(i)+".png")
             plt.close(fig)
             bar.update(i)
-        
+
         bar.finish()
 
     def sintesi_errori(self):
+        """
+        Funzione da chiamare in caso si voglia una stima dell'errore totale sui dati.
+        La stima è calcolata a partire dalle differenze tra il valore "vero" di soglia letto dai file .txt
+        e i valori di soglia trovati con fit lineare e fit con err_function().
+
+        """
 
         media_errori_lineare = np.mean(np.array(self.lista_diff_lineare))
         media_errori_lineare = math.sqrt(media_errori_lineare)
