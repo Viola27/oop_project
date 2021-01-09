@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -105,9 +106,13 @@ int main(void) {
   //   cerr << e.what();
   // }
 
+  int tot_file = 10;
+
+  // cout << "Inserire numero file da analizzare: ";
+  // cin >> tot_file;
+
   ifstream file_path("file_path.txt");
   ofstream risultati("risultati_cpp.txt");
-  int tot_file = 10;
 
   for (int curr_file = 0; curr_file < tot_file; curr_file++) {
     string onepath;

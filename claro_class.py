@@ -78,6 +78,47 @@ class claro_class:
             plt.savefig("plot/fig"+str(i)+"_chip_"+str(num_chip)+".png")
             plt.close()
 
+    def linear_fit_no_png(self, how_many=20, how_many_chips=0):
+        """
+        Funzione per il fit lineare senza png.
+        Parametri:
+        - how_many: default 20, indica quanti file analizzare.
+        - how_many_chips: default 0, indica quanti chip analizzare.
+        Se 'how_many_chips' è 0, viene ignorato.
+        Se 'how_many_chips' è diverso da 0, vengono analizzati 'how_many' file e 
+        vengono considerati solo quelli con un numero di chip minore o uguale a 'how_many_chips'.
+        """
+
+        list_of_paths = self.read_pathfile(how_many, how_many_chips)
+        risultati = open("risultati_py.txt", "w")
+
+        for i in range(0, len(list_of_paths)):
+            x, y, soglia_vera, num_chip, num_ch = self.read_single_file(
+                list_of_paths[i].strip())
+
+            # In caso nel file ci siano valori non corretti, salta il ciclo
+            if x == 0 and y == 0 and soglia_vera == 0 and num_chip == 0:
+                continue
+
+            y_fit = np.array(y)
+            y_fit = y_fit[y_fit > 1]
+            y_fit = y_fit[y_fit < 999]
+
+            mask_array = np.in1d(y, y_fit)
+            # True solo i valori scelti per il fit
+            mask_array = np.invert(mask_array)
+            # Usando una maschera ricavo i valori x utili
+            x_fit = ma.masked_array(x, mask=mask_array).compressed()
+
+            coeff = np.polyfit(x_fit, y_fit, 1)
+
+            x_soglia = (500 - coeff[1]) / coeff[0]
+            risultati.write("Chip: "+str(num_chip)+"\tCh: "+str(num_ch)+"\tReal Thres: "+str(soglia_vera) +
+                            "\tThresh Found:"+str(x_soglia)+"\tDiff: "+str(abs(x_soglia-soglia_vera))+"\n")
+
+            self.lista_diff_lineare.append((soglia_vera-x_soglia)**2)
+        risultati.close()
+
     def better_fit(self, how_many=20, how_many_chips=0):
         """
         Funzione per il fit tramite la 'err_function()'.
