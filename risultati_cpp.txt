@@ -1,0 +1,10 @@
+Chip: 1	Ch: 0	Real Thres: 161.272	Thresh found: 161.459	Diff: 0.187073
+Chip: 1	Ch: 1	Real Thres: 233.743	Thresh found: 233.948	Diff: 0.204865
+Chip: 1	Ch: 2	Real Thres: 181.385	Thresh found: 181.583	Diff: 0.197968
+Chip: 1	Ch: 3	Real Thres: 180.41	Thresh found: 180.776	Diff: 0.366669
+Chip: 1	Ch: 4	Real Thres: 193.325	Thresh found: 193.429	Diff: 0.104523
+Chip: 1	Ch: 5	Real Thres: 195.856	Thresh found: 195.589	Diff: 0.266388
+Chip: 1	Ch: 6	Real Thres: 187.735	Thresh found: 187.497	Diff: 0.238007
+Chip: 1	Ch: 7	Real Thres: 186.527	Thresh found: 186.513	Diff: 0.0145416
+Chip: 2	Ch: 0	Real Thres: 225.485	Thresh found: 225.407	Diff: 0.0782013
+Chip: 2	Ch: 1	Real Thres: 172.59	Thresh found: 172.704	Diff: 0.11412
