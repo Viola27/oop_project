@@ -1,8 +1,8 @@
 from claro_class import claro_class
 import time
 
-elementi = 20
-chip = 10
+elementi = 2000
+chip = 0
 
 claro = claro_class()
 
@@ -14,11 +14,11 @@ linear2 = time.time()
 #claro.better_fit_for_chips(elementi, chip)
 #claro.find_chips_threshold(600, 79)
 
-better2 = time.time()
+#better2 = time.time()
 
 #claro.sintesi_errori()
 
 print("Tempo fit lineare per "+str(elementi) +
       " elementi: "+str(round(linear2-linear1,2)))
-print("Tempo fit con funzione di errore per "+str(elementi) +
-      " elementi: "+str(round(better2-linear2,2)))
+#print("Tempo fit con funzione di errore per "+str(elementi) +
+#      " elementi: "+str(round(better2-linear2,2)))
