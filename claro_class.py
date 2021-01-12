@@ -264,6 +264,11 @@ class claro_class:
         plt.close()
 
     def fit(self, how_many=20, how_many_chips=0):
+        """
+        Funzione per il fit dei dati. Unisce le funzioni 'fit_lineare' 
+        e 'better_fit' disegnando una sola figura con entrambe le curve 
+        di approssimazione. Salva ogni curva come png.
+        """
 
         list_of_paths = self.read_pathfile(how_many, how_many_chips)
 
@@ -285,7 +290,8 @@ class claro_class:
             y_lin_fit = y_lin_fit[y_lin_fit > 5]
             y_lin_fit = y_lin_fit[y_lin_fit < 990]
 
-            if (len(y_lin_fit)==1):
+            # Se c'è un solo punto, l'intervallo è espanso sperando di trovarne almeno un altro
+            if (len(y_lin_fit) == 1):
                 y_lin_fit = np.array(y)
                 y_lin_fit = y_lin_fit[y_lin_fit > 1]
                 y_lin_fit = y_lin_fit[y_lin_fit < 999]
