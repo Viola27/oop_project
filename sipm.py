@@ -5,12 +5,14 @@ import time
 n_points_baseline = 500
 peak_height = 0.001
 peak_prominence = 0.0001
+
 tempo_init = 0.0
 tempo_analisi = 0.0
 tempo_picchi = 0.0
 tempo_dcr = 0.0
+
 group_name = "gruppo_r"
-folder = 'source'
+folder = '../source'
 filenames = {"r203ov.csv": "r203ovwav.csv",
              "r204ov.csv": "r204ovwav.csv",
              "r205ov.csv": "r205ovwav.csv"}
@@ -30,7 +32,7 @@ for key in filenames:
     tempo_init += (init2-init1)
     # Cerchiamo i picchi
     analisi1 = time.time()
-    _sipm_wf_.analyze_wfs_fast(n_points_baseline, pic_name[0], peak_height,
+    _sipm_wf_.analyze_wfs_no_png(n_points_baseline, pic_name[0], peak_height,
                           peak_prominence)
     analisi2 = time.time()
     tempo_analisi += (analisi2-analisi1)

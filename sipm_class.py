@@ -374,7 +374,7 @@ class sipm_wf():
     # Funzione per plottare i picchi
     def plot_peaks(self, filename):
         """
-        Funzione per salvare i picchi in un file pdff con 2 grafici: uno scatter e un istogramma.
+        Funzione per salvare i picchi in un file pdf con 2 grafici: uno scatter e un istogramma.
         """
 
         print("---------------------------------")
@@ -387,19 +387,21 @@ class sipm_wf():
             self.wf_peaks['dt'], alpha=0, bins=100)
         plt.close(fig_dummy)
 
+        OV = numberfromstring(filename)
+
         # Ora creo la figura vera e propria, con rapporto 2:1 tra i plot..
         fig, ax = plt.subplots(2, sharex=True, gridspec_kw={
                                "height_ratios": [2, 1]})
-        # ..e scalla log sulle x,..
+        # ..e scala log sulle x,..
         plt.xscale('log')
         # ..e gli do un titolo
-        figure_title = "Dark current plot"
+        figure_title = "Dark current plot - OV = "+str(OV-200)
         ax[0].set_title(figure_title)
         # Comincio con lo scatter plot di amplitude vs Dt in alto
         ax[0].scatter(self.wf_peaks['dt'], self.wf_peaks['A'],
                       marker=',', facecolors='none', edgecolors='black')
         ax[0].set_xlim([1e-10, 10])
-        ax[0].set_ylim([0, 0.01])
+        #ax[0].set_ylim([0, 0.01])
         ax[0].set_ylabel("Amplitudes (V)")
         # Poi creo il binning logaritmico per il plot di Dt..
         log_bins = np.logspace(
@@ -442,14 +444,14 @@ class sipm_wf():
             sys.exit(-2)
 
         # La dark count rate sara' uguale al numero di punti a Dt elevata..
-        dcr = len(self.wf_peaks[(self.wf_peaks['dt'] > 4e-6)])
+        dcr = len(self.wf_peaks[(self.wf_peaks['dt'] > 4e-4)])
         dcr_err = np.sqrt(dcr)
         # La rate dei cross-talk sara' uguale al numero di punti a ampiezza superiore a 1 pe..
-        ctr = len(self.wf_peaks[(self.wf_peaks['A'] > 0.004)])
+        ctr = len(self.wf_peaks[(self.wf_peaks['A'] > 0.01)])
         ctr_err = np.sqrt(ctr)
         # la rate dei after-pulse sara' uguale al numero di punti Dt piccolo..
         apr = len(self.wf_peaks[(self.wf_peaks['dt'] <
-                                 4e-6) & (self.wf_peaks['A'] < 0.004)])
+                                 4e-4) & (self.wf_peaks['A'] < 0.01)])
         apr_err = np.sqrt(apr)
         # ..divisi per la lunghezza del run..
         # ..che approssimativamente corrisponde al tempo dell'ultimo evento
