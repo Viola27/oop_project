@@ -1,13 +1,13 @@
 from claro_class import claro_class
 import time
 
-elementi = 2000
+elementi = 100
 chip = 0
 
 claro = claro_class()
 
 linear1 = time.time()
-claro.linear_fit_no_png(elementi, chip)
+claro.fit(elementi, chip)
 linear2 = time.time()
 
 #claro.better_fit(elementi, chip)

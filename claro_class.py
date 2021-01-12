@@ -279,46 +279,79 @@ class claro_class:
             plt.xscale('linear')
             plt.yscale('linear')
 
+            # Fit lineare
+
+            y_lin_fit = np.array(y)
+            y_lin_fit = y_lin_fit[y_lin_fit > 5]
+            y_lin_fit = y_lin_fit[y_lin_fit < 990]
+
+            if (len(y_lin_fit)==1):
+                y_lin_fit = np.array(y)
+                y_lin_fit = y_lin_fit[y_lin_fit > 1]
+                y_lin_fit = y_lin_fit[y_lin_fit < 999]
+
+            mask_array = np.in1d(y, y_lin_fit)
+            # True solo i valori scelti per il fit
+            mask_array = np.invert(mask_array)
+            # Usando una maschera ricavo i valori x utili
+            x_lin_fit = ma.masked_array(x, mask=mask_array).compressed()
+
+            coeff = np.polyfit(x_lin_fit, y_lin_fit, 1)
+            x_lin_plot = x_lin_fit
+            # Aggiunti due punti in più per allungare la retta
+            x_lin_plot = np.insert(x_lin_plot, 0, x_lin_fit[0]-2)
+            x_lin_plot = np.append(x_lin_plot, x_lin_fit[-1]+2)
+            y_lin_plot = x_lin_plot*coeff[0] + coeff[1]
+
+            x_lin_soglia = (500 - coeff[1]) / coeff[0]
+
+            plt.text(x[0], 900, "Soglia calcolata (lin): x="+str(round(x_lin_soglia, 2))+"V\nSoglia vera: x=" +
+                     str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_lin_soglia, 2))+"V", fontsize=8)
+
+            self.lista_diff_lineare.append((soglia_vera-x_lin_soglia)**2)
+            plt.plot(x_lin_plot, y_lin_plot, linestyle='--')
+
+            # Fit erf function
+
             x = np.array(x)
             x_norm = [float(i) for i in x]  # Cast a float
             x_norm -= np.mean(x_norm)
 
-            #AAGIUNGERE IL FIT LINEARE
-
-            x_plot = np.linspace(x_norm[0], x_norm[-1], len(x_norm)*100)
-            y_plot = (special.erf(x_plot)+1)*500  # Adattamento verticale
-            x_plot += x[0]  # Adattamento orizzontale
+            x_erf_plot = np.linspace(x_norm[0], x_norm[-1], len(x_norm)*100)
+            y_erf_plot = (special.erf(x_erf_plot)+1) * \
+                500  # Adattamento verticale
+            x_erf_plot += x[0]  # Adattamento orizzontale
 
             y_inutili = np.array(y)
             y_inutili = y_inutili[y_inutili < 50]
             index = len(y_inutili)  # Indice del primo elemento utile
 
             # Indice dell'elemento della funzione con stessa y
-            extra_funct_index = np.argmin(abs(y_plot - y[index]))
-            extra = abs(x[index]-(x_plot[extra_funct_index]))
+            extra_funct_index = np.argmin(abs(y_erf_plot - y[index]))
+            extra = abs(x[index]-(x_erf_plot[extra_funct_index]))
 
             # Se ci sono due punti centrali, la curva è traslata in modo da essere
             # il più vicina possibile ad entrambi i punti
             if y[index+1] < 950:
-                extra_funct_index2 = np.argmin(abs(y_plot - y[index+1]))
-                extra2 = abs(x[index+1]-(x_plot[extra_funct_index2]))
-                x_plot += ((extra+extra2)/2)  # Secondo adattamento orizzontale
+                extra_funct_index2 = np.argmin(abs(y_erf_plot - y[index+1]))
+                extra2 = abs(x[index+1]-(x_erf_plot[extra_funct_index2]))
+                # Secondo adattamento orizzontale
+                x_erf_plot += ((extra+extra2)/2)
             else:
-                x_plot += extra  # Secondo adattamento orizzontale
+                x_erf_plot += extra  # Secondo adattamento orizzontale
 
-            index_soglia = np.argmin(abs(y_plot-500))
-            x_soglia = x_plot[index_soglia]
+            index_soglia = np.argmin(abs(y_erf_plot-500))
+            x_erf_soglia = x_erf_plot[index_soglia]
 
-            plt.scatter(x_plot[index_soglia],
-                        y_plot[index_soglia], marker='o', color="black")
+            plt.scatter(x_erf_plot[index_soglia],
+                        y_erf_plot[index_soglia], marker='o', color="black")
 
-            plt.plot(x_plot, y_plot)
+            plt.text(x[0], 500, "Soglia calcolata (erf): x="+str(round(x_erf_soglia, 2))+"V\nSoglia vera: x=" +
+                     str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_erf_soglia, 2))+"V", fontsize=8)
 
-            plt.text(x[0], y_plot[index_soglia], "Soglia calcolata: x="+str(round(x_soglia, 2))+"V\nSoglia vera: x=" +
-                     str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_soglia, 2))+"V", fontsize=8)
-
-            self.lista_diff_err.append((soglia_vera-x_soglia)**2)
-            plt.savefig("plot/better_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
+            self.lista_diff_err.append((soglia_vera-x_erf_soglia)**2)
+            plt.plot(x_erf_plot, y_erf_plot)
+            plt.savefig("plot/fit_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
             plt.close()
 
     def find_chips_threshold(self, how_many=400, how_many_chips=259):
