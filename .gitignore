@@ -4,4 +4,4 @@
 ..vscode/*
 test.py
 risultati*.txt
-*.pdf
+*_Dt.pdf
