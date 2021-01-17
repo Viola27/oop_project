@@ -43,10 +43,6 @@ int read_single_file(singleFileValues *values, string filepath) {
   getline(ss, token, '.');
   sscanf(token.c_str(), "%d", &values->chip);
 
-  if (values->chip > 300) {
-    cout << "chip errato nella readFile: " << token.c_str() << "\n";
-  }
-
   ifstream f(filepath);
   getline(f, line);
   ss = std::stringstream(line);
@@ -54,7 +50,6 @@ int read_single_file(singleFileValues *values, string filepath) {
 
   if ((sscanf(token.c_str(), "%f", &test)) != 1) { // file errato
     values->real_threshold = -1;
-    //cout << "token: " << token << "\n";
     f.close();
     return -1;
   }
@@ -117,7 +112,7 @@ int main(void) {
   //   cerr << e.what();
   // }
 
-  int tot_file = 2000;
+  int tot_file = 6000;
 
   // cout << "Inserire numero file da analizzare: ";
   // cin >> tot_file;
@@ -136,8 +131,8 @@ int main(void) {
 
   for (int curr_file = 0; curr_file < tot_file; curr_file++) {
 
-    // Reset X e Y
-    #pragma unroll
+// Reset X e Y
+#pragma unroll
     for (int i = 0; i < MAX_VALUE; i++) {
       X[i] = 0;
       Y[i] = 0;
@@ -146,17 +141,11 @@ int main(void) {
     getline(file_path, onepath);
     read_single_file(&v, onepath);
 
-    if (v.real_threshold == -1){
-      cout << "continue\n";
+    if (v.real_threshold == -1) {
       continue;
     }
 
-    if (v.chip > 300) {
-      cout << v.chip << "chip errato nel main: " << curr_file << "\n";
-    }
-
     j = 0;
-
     for (int i = 0; i < MAX_VALUE; i++) {
       if ((v.y[i] > 1) && (v.y[i] < 999)) {
         X[j] = v.x[i];

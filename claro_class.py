@@ -46,11 +46,17 @@ class claro_class:
             if x == 0 and y == 0 and soglia_vera == 0 and num_chip == 0:
                 continue
 
-            y_fit = np.array(y)
-            y_fit = y_fit[y_fit > 1]
-            y_fit = y_fit[y_fit < 999]
+            y_lin_fit = np.array(y)
+            y_lin_fit = y_lin_fit[y_lin_fit > 5]
+            y_lin_fit = y_lin_fit[y_lin_fit < 990]
 
-            mask_array = np.in1d(y, y_fit)
+            # Se c'è un solo punto, l'intervallo è espanso sperando di trovarne almeno un altro
+            if (len(y_lin_fit) == 1):
+                y_lin_fit = np.array(y)
+                y_lin_fit = y_lin_fit[y_lin_fit > 1]
+                y_lin_fit = y_lin_fit[y_lin_fit < 999]
+
+            mask_array = np.in1d(y, y_lin_fit)
             # True solo i valori scelti per il fit
             mask_array = np.invert(mask_array)
             # Usando una maschera ricavo i valori x utili
@@ -61,7 +67,7 @@ class claro_class:
             plt.xscale('linear')
             plt.yscale('linear')
 
-            coeff = np.polyfit(x_fit, y_fit, 1)
+            coeff = np.polyfit(x_fit, y_lin_fit, 1)
             x_plot = x_fit
             # Aggiunti due punti in più per allungare la retta
             x_plot = np.insert(x_plot, 0, x_fit[0]-2)
@@ -87,6 +93,8 @@ class claro_class:
         Se 'how_many_chips' è 0, viene ignorato.
         Se 'how_many_chips' è diverso da 0, vengono analizzati 'how_many' file e 
         vengono considerati solo quelli con un numero di chip minore o uguale a 'how_many_chips'.
+
+        Essenzialmente serve per confrontare i tempi tra Py e C++.
         """
 
         list_of_paths = self.read_pathfile(how_many, how_many_chips)
@@ -119,7 +127,7 @@ class claro_class:
             self.lista_diff_lineare.append((soglia_vera-x_soglia)**2)
         risultati.close()
 
-    def better_fit(self, how_many=20, how_many_chips=0):
+    def err_fit(self, how_many=20, how_many_chips=0):
         """
         Funzione per il fit tramite la 'err_function()'.
         Parametri:
@@ -182,15 +190,111 @@ class claro_class:
                      str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_soglia, 2))+"V", fontsize=8)
 
             self.lista_diff_err.append((soglia_vera-x_soglia)**2)
-            plt.savefig("plot/better_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
+            plt.savefig("plot/err_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
             plt.close()
 
-    def better_fit_for_chips(self, how_many=200, how_many_chips=27):
+    def fit(self, how_many=20, how_many_chips=0):
+        """
+        Funzione per il fit dei dati. Unisce le funzioni 'fit_lineare' 
+        e 'err_fit' disegnando una sola figura con entrambe le curve 
+        di approssimazione. Salva ogni curva come png.
+        """
+
+        list_of_paths = self.read_pathfile(how_many, how_many_chips)
+
+        for i in range(0, len(list_of_paths)):
+            x, y, soglia_vera, num_chip, _ = self.read_single_file(
+                list_of_paths[i].strip())
+
+            if x == 0 and y == 0 and soglia_vera == 0 and num_chip == 0:
+                continue
+
+            plt.scatter(x, y, marker='o')
+            plt.grid()
+            plt.xscale('linear')
+            plt.yscale('linear')
+
+            # Fit lineare
+            y_lin_fit = np.array(y)
+            y_lin_fit = y_lin_fit[y_lin_fit > 5]
+            y_lin_fit = y_lin_fit[y_lin_fit < 990]
+
+            # Se c'è un solo punto, l'intervallo è espanso sperando di trovarne almeno un altro
+            if (len(y_lin_fit) == 1):
+                y_lin_fit = np.array(y)
+                y_lin_fit = y_lin_fit[y_lin_fit > 1]
+                y_lin_fit = y_lin_fit[y_lin_fit < 999]
+
+            mask_array = np.in1d(y, y_lin_fit)
+            # True solo i valori scelti per il fit
+            mask_array = np.invert(mask_array)
+            # Usando una maschera ricavo i valori x utili
+            x_lin_fit = ma.masked_array(x, mask=mask_array).compressed()
+
+            coeff = np.polyfit(x_lin_fit, y_lin_fit, 1)
+            x_lin_plot = x_lin_fit
+            # Aggiunti due punti in più per allungare la retta
+            x_lin_plot = np.insert(x_lin_plot, 0, x_lin_fit[0]-2)
+            x_lin_plot = np.append(x_lin_plot, x_lin_fit[-1]+2)
+            y_lin_plot = x_lin_plot*coeff[0] + coeff[1]
+
+            x_lin_soglia = (500 - coeff[1]) / coeff[0]
+
+            plt.text(x[0], 900, "Soglia calcolata (lin): x="+str(round(x_lin_soglia, 2))+"V\nSoglia vera: x=" +
+                     str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_lin_soglia, 2))+"V", fontsize=8)
+
+            self.lista_diff_lineare.append((soglia_vera-x_lin_soglia)**2)
+            plt.plot(x_lin_plot, y_lin_plot, linestyle='--')
+
+            # Fit err function
+            x = np.array(x)
+            x_norm = [float(i) for i in x]  # Cast a float
+            x_norm -= np.mean(x_norm)
+
+            x_erf_plot = np.linspace(x_norm[0], x_norm[-1], len(x_norm)*100)
+            y_erf_plot = (special.erf(x_erf_plot)+1) * \
+                500  # Adattamento verticale
+            x_erf_plot += x[0]  # Adattamento orizzontale
+
+            y_inutili = np.array(y)
+            y_inutili = y_inutili[y_inutili < 50]
+            index = len(y_inutili)  # Indice del primo elemento utile
+
+            # Indice dell'elemento della funzione con stessa y
+            extra_funct_index = np.argmin(abs(y_erf_plot - y[index]))
+            extra = abs(x[index]-(x_erf_plot[extra_funct_index]))
+
+            # Se ci sono due punti centrali, la curva è traslata in modo da essere
+            # il più vicina possibile ad entrambi i punti
+            if y[index+1] < 950:
+                extra_funct_index2 = np.argmin(abs(y_erf_plot - y[index+1]))
+                extra2 = abs(x[index+1]-(x_erf_plot[extra_funct_index2]))
+                # Secondo adattamento orizzontale
+                x_erf_plot += ((extra+extra2)/2)
+            else:
+                x_erf_plot += extra  # Secondo adattamento orizzontale
+
+            index_soglia = np.argmin(abs(y_erf_plot-500))
+            x_erf_soglia = x_erf_plot[index_soglia]
+
+            plt.scatter(x_erf_plot[index_soglia],
+                        y_erf_plot[index_soglia], marker='o', color="black")
+
+            plt.text(x[0], 500, "Soglia calcolata (erf): x="+str(round(x_erf_soglia, 2))+"V\nSoglia vera: x=" +
+                     str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_erf_soglia, 2))+"V", fontsize=8)
+
+            self.lista_diff_err.append((soglia_vera-x_erf_soglia)**2)
+            plt.plot(x_erf_plot, y_erf_plot)
+            plt.savefig("plot/fit_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
+            plt.close()
+
+    def err_fit_for_chips(self, how_many=200, how_many_chips=27):
         """
         Funzione per il fit tramite la 'err_function()'.
         La funzione crea un unico plot per ciascun chip, contenente tutte le curve dei diversi canali.
-        E' consigliabile impostare un valore di 'how_many' minore di 4000, 
-        in modo da avere al più 8 canali per plot.
+        Se il numero di chip è ripetuto in stazioni diverse, 
+        i grafici creati sono diversi (in ciascun grafico ci sono
+        al più 8 curve relative agli 8 canali).
 
         Parametri:
         - how_many: default 200, indica quanti file analizzare.
@@ -202,6 +306,7 @@ class claro_class:
 
         list_of_paths = self.read_pathfile(how_many, how_many_chips)
         last_chip = 1
+        figura = 0
         colors = ['blue', 'yellow', 'darkred', 'magenta',
                   'orange', 'red', 'green', 'lightblue']
 
@@ -209,12 +314,18 @@ class claro_class:
             x, y, soglia_vera, num_chip, num_ch = self.read_single_file(
                 list_of_paths[i].strip())
 
+            # In caso nel file ci siano valori non corretti, salta il ciclo
+            if x == 0 and y == 0 and soglia_vera == 0 and num_chip == 0:
+                continue
+
             # Se si inizia il plot di un nuovo chip, serve chiudere la figura vecchia
             if num_chip != last_chip:
+                figura +=1
                 plt.yticks(np.arange(0, 1000, step=100))
                 plt.grid()
                 plt.legend()
-                plt.savefig("plot/better_chip_"+str(last_chip)+".png")
+                plt.title("Chip "+str(last_chip))
+                plt.savefig("plot/err_fit_"+str(figura)+".png")
                 last_chip = num_chip
                 plt.close()
 
@@ -260,105 +371,8 @@ class claro_class:
         plt.yticks(np.arange(0, 1000, step=100))
         plt.grid()
         plt.legend()
-        plt.savefig("plot/better_chip_"+str(last_chip)+".png")
+        plt.savefig("plot/err_fit_chip_"+str(figura+1)+".png")
         plt.close()
-
-    def fit(self, how_many=20, how_many_chips=0):
-        """
-        Funzione per il fit dei dati. Unisce le funzioni 'fit_lineare' 
-        e 'better_fit' disegnando una sola figura con entrambe le curve 
-        di approssimazione. Salva ogni curva come png.
-        """
-
-        list_of_paths = self.read_pathfile(how_many, how_many_chips)
-
-        for i in range(0, len(list_of_paths)):
-            x, y, soglia_vera, num_chip, _ = self.read_single_file(
-                list_of_paths[i].strip())
-
-            if x == 0 and y == 0 and soglia_vera == 0 and num_chip == 0:
-                continue
-
-            plt.scatter(x, y, marker='o')
-            plt.grid()
-            plt.xscale('linear')
-            plt.yscale('linear')
-
-            # Fit lineare
-
-            y_lin_fit = np.array(y)
-            y_lin_fit = y_lin_fit[y_lin_fit > 5]
-            y_lin_fit = y_lin_fit[y_lin_fit < 990]
-
-            # Se c'è un solo punto, l'intervallo è espanso sperando di trovarne almeno un altro
-            if (len(y_lin_fit) == 1):
-                y_lin_fit = np.array(y)
-                y_lin_fit = y_lin_fit[y_lin_fit > 1]
-                y_lin_fit = y_lin_fit[y_lin_fit < 999]
-
-            mask_array = np.in1d(y, y_lin_fit)
-            # True solo i valori scelti per il fit
-            mask_array = np.invert(mask_array)
-            # Usando una maschera ricavo i valori x utili
-            x_lin_fit = ma.masked_array(x, mask=mask_array).compressed()
-
-            coeff = np.polyfit(x_lin_fit, y_lin_fit, 1)
-            x_lin_plot = x_lin_fit
-            # Aggiunti due punti in più per allungare la retta
-            x_lin_plot = np.insert(x_lin_plot, 0, x_lin_fit[0]-2)
-            x_lin_plot = np.append(x_lin_plot, x_lin_fit[-1]+2)
-            y_lin_plot = x_lin_plot*coeff[0] + coeff[1]
-
-            x_lin_soglia = (500 - coeff[1]) / coeff[0]
-
-            plt.text(x[0], 900, "Soglia calcolata (lin): x="+str(round(x_lin_soglia, 2))+"V\nSoglia vera: x=" +
-                     str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_lin_soglia, 2))+"V", fontsize=8)
-
-            self.lista_diff_lineare.append((soglia_vera-x_lin_soglia)**2)
-            plt.plot(x_lin_plot, y_lin_plot, linestyle='--')
-
-            # Fit erf function
-
-            x = np.array(x)
-            x_norm = [float(i) for i in x]  # Cast a float
-            x_norm -= np.mean(x_norm)
-
-            x_erf_plot = np.linspace(x_norm[0], x_norm[-1], len(x_norm)*100)
-            y_erf_plot = (special.erf(x_erf_plot)+1) * \
-                500  # Adattamento verticale
-            x_erf_plot += x[0]  # Adattamento orizzontale
-
-            y_inutili = np.array(y)
-            y_inutili = y_inutili[y_inutili < 50]
-            index = len(y_inutili)  # Indice del primo elemento utile
-
-            # Indice dell'elemento della funzione con stessa y
-            extra_funct_index = np.argmin(abs(y_erf_plot - y[index]))
-            extra = abs(x[index]-(x_erf_plot[extra_funct_index]))
-
-            # Se ci sono due punti centrali, la curva è traslata in modo da essere
-            # il più vicina possibile ad entrambi i punti
-            if y[index+1] < 950:
-                extra_funct_index2 = np.argmin(abs(y_erf_plot - y[index+1]))
-                extra2 = abs(x[index+1]-(x_erf_plot[extra_funct_index2]))
-                # Secondo adattamento orizzontale
-                x_erf_plot += ((extra+extra2)/2)
-            else:
-                x_erf_plot += extra  # Secondo adattamento orizzontale
-
-            index_soglia = np.argmin(abs(y_erf_plot-500))
-            x_erf_soglia = x_erf_plot[index_soglia]
-
-            plt.scatter(x_erf_plot[index_soglia],
-                        y_erf_plot[index_soglia], marker='o', color="black")
-
-            plt.text(x[0], 500, "Soglia calcolata (erf): x="+str(round(x_erf_soglia, 2))+"V\nSoglia vera: x=" +
-                     str(round(soglia_vera, 2))+"V\nDifferenza: "+str(round(soglia_vera-x_erf_soglia, 2))+"V", fontsize=8)
-
-            self.lista_diff_err.append((soglia_vera-x_erf_soglia)**2)
-            plt.plot(x_erf_plot, y_erf_plot)
-            plt.savefig("plot/fit_fig"+str(i)+"_chip_"+str(num_chip)+".jpg")
-            plt.close()
 
     def find_chips_threshold(self, how_many=400, how_many_chips=259):
         """
@@ -392,7 +406,7 @@ class claro_class:
             x_plot += x[0]  # Adattamento orizzontale
 
             # Ricerca valore di soglia (per commenti più dettagliati
-            # si rimanda alla funzione "better_fit()")
+            # si rimanda alla funzione "err_fit()")
             y_inutili = np.array(y)
             y_inutili = y_inutili[y_inutili < 50]
             index = len(y_inutili)  # Indice del primo elemento utile
@@ -564,7 +578,11 @@ class claro_class:
 
         """
 
-        media_errori_lineare = np.mean(np.array(self.lista_diff_lineare))
+        arr_lineare = np.array(self.lista_diff_lineare)
+        arr_lineare = arr_lineare[arr_lineare > -100]
+        arr_lineare = arr_lineare[arr_lineare < 100]
+
+        media_errori_lineare = np.mean(arr_lineare)
         media_errori_lineare = math.sqrt(media_errori_lineare)
         media_errori_err_funct = np.mean(np.array(self.lista_diff_err))
         media_errori_err_funct = math.sqrt(media_errori_err_funct)

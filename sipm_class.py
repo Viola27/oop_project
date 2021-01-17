@@ -59,9 +59,9 @@ class sipm_wf():
         bsl_time = wf_time[0:n_bsl]
         bsl_ch = [self.baseline] * n_bsl
 
-        # Per trovre i picchi, uso la funzione find_peaks di scipy.signal
+        # Per trovare i picchi, uso la funzione find_peaks di scipy.signal
         # I valori di height e prominence sono specificati dall'utente..
-        # ..e scalti per selezionare tutti i picchi senza prendere rumore
+        # ..e scelti per selezionare tutti i picchi senza prendere rumore
         peaks, _ = sp.find_peaks(
             wf_ch, height=peak_height, prominence=peak_prominences)
 
@@ -139,9 +139,12 @@ class sipm_wf():
                 if len(peaks) > 0:
                     ax[int(i / 3)][i % 3].scatter(wf_time.iloc[peaks],
                                                   wf_ch.iloc[peaks], c='darkred')
-                # Do un nome agli assi..
-                ax[int(i / 3)][i % 3].set_ylabel('Amplitude (V)')
-                ax[int(i / 3)][i % 3].set_xlabel('Time (s)')
+
+                # Set common labels
+                fig.text(0.5, 0.01, 'Time (s)', ha='center', va='center')
+                fig.text(0.02, 0.5, 'Amplitude (V)', ha='center', va='center', rotation='vertical')
+                
+                
                 # plt.show()
                 peaks_temp = pd.concat([peaks_temp, pd.DataFrame(
                     {'t': wf_time.iloc[peaks], 'A': wf_ch.iloc[peaks]-self.baseline})], ignore_index=True)
@@ -199,6 +202,7 @@ class sipm_wf():
                 counter += 1
 
         bar.finish()
+        print("Events: "+str(len(self.table_sipm_time['ev'])))
         print("---------------------------------")
         print("Waveform analysis completed!")
         # Devo ora ricavare di nuovo i Dt dai tempi assoluti, utilizzando la funzione diff()..
@@ -266,10 +270,11 @@ class sipm_wf():
                 # ..e i picchi (se ci sono -> ci sono sicuramente, c'è il primo if)
                 ax[int(num_fig / 3)][num_fig %
                                      3].scatter(wf_time.iloc[peaks], wf_ch.iloc[peaks], c='darkred')
-                # Do un nome agli assi..
-                ax[int(num_fig / 3)][num_fig % 3].set_ylabel('Amplitude (V)')
-                ax[int(num_fig / 3)][num_fig % 3].set_xlabel('Time (s)')
-                # plt.show()
+
+                # Set common labels
+                fig.text(0.5, 0.01, 'Time (s)', ha='center', va='center')
+                fig.text(0.02, 0.5, 'Amplitude (V)', ha='center', va='center', rotation='vertical')
+
                 peaks_temp = pd.concat([peaks_temp, pd.DataFrame(
                     {'t': wf_time.iloc[peaks], 'A': wf_ch.iloc[peaks]-self.baseline})], ignore_index=True)
                 num_fig += 1
@@ -324,6 +329,7 @@ class sipm_wf():
         counter = 0
         peaks_temp = pd.DataFrame()
         num_fig = 0
+        print("Events: "+str(len(self.table_sipm_time['ev'])))
         # Ora faccio un loop sugli eventi..
         for event in self.table_sipm_time['ev']:
 
@@ -399,9 +405,9 @@ class sipm_wf():
         ax[0].set_title(figure_title)
         # Comincio con lo scatter plot di amplitude vs Dt in alto
         ax[0].scatter(self.wf_peaks['dt'], self.wf_peaks['A'],
-                      marker=',', facecolors='none', edgecolors='black')
+                      marker='.', facecolors='none', edgecolors='black')
         ax[0].set_xlim([1e-10, 10])
-        #ax[0].set_ylim([0, 0.01])
+        # ax[0].set_ylim([0, 0.01])
         ax[0].set_ylabel("Amplitudes (V)")
         # Poi creo il binning logaritmico per il plot di Dt..
         log_bins = np.logspace(
@@ -439,19 +445,20 @@ class sipm_wf():
         print("---------------------------------")
         try:
             OV = numberfromstring(str_OV)
+            OV -= 200
         except ValueError:
             print("La stringa contenente il valore di OV non è corretta.")
             sys.exit(-2)
 
         # La dark count rate sara' uguale al numero di punti a Dt elevata..
-        dcr = len(self.wf_peaks[(self.wf_peaks['dt'] > 4e-4)])
+        dcr = len(self.wf_peaks[(self.wf_peaks['dt'] > 1e-5)])
         dcr_err = np.sqrt(dcr)
         # La rate dei cross-talk sara' uguale al numero di punti a ampiezza superiore a 1 pe..
         ctr = len(self.wf_peaks[(self.wf_peaks['A'] > 0.01)])
         ctr_err = np.sqrt(ctr)
         # la rate dei after-pulse sara' uguale al numero di punti Dt piccolo..
         apr = len(self.wf_peaks[(self.wf_peaks['dt'] <
-                                 4e-4) & (self.wf_peaks['A'] < 0.01)])
+                                 1e-6) & (self.wf_peaks['A'] < 0.006)])
         apr_err = np.sqrt(apr)
         # ..divisi per la lunghezza del run..
         # ..che approssimativamente corrisponde al tempo dell'ultimo evento
@@ -525,7 +532,6 @@ def draw_tot_graphs(group_name):
     fig.savefig(plot_name)
     plt.close(fig)
 
-
 # Helper function (ovvero una funzione che aiuta un'altra funzione con un task specifico)..
 # ..definita al di fuori della classe
 # In questo caso, la funzione apre il file csv, ignorando l'incipit, e restituisce il DataFrame
@@ -549,14 +555,12 @@ def read_table_sipm(filename, keyword):
         # ovvero la linea che contiene i nomi delle colonne..
         if lines[line_counter].startswith(keyword):
             # procediamo ad creare il DataFrame di pandas, che diamo come output
-            print("Header: " + str(line_counter))
             return pd.read_csv(filename, header=line_counter)
 
         line_counter += 1
     # Altrimenti, se non abbiamo trovato la linea di header, diamo un messaggio di errore
     print("Error, header not found!")
     sys.exit(1)
-
 
 def numberfromstring(string_a):
     n = list(string_a)
